@@ -1,41 +1,43 @@
-name: Validate PostgreSQL Scripts
+name: Run SQL Tests
 
 on:
   push:
-    branches: [ "dev" ]
-  pull_request:
-    branches: [ "dev" ]
+    branches: [ dev ]
 
 jobs:
-  validate-sql:
+  test:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:latest
+        image: postgres:15
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_PASSWORD: postgresql
           POSTGRES_DB: test_db
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-cmd="pg_isready"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-    - name: Install PostgreSQL client
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y postgresql-client
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          for i in {1..10}; do
+            if pg_isready -h localhost -p 5432 -U postgres; then
+              break
+            fi
+            sleep 2
+          done
 
-    - name: Validate SQL syntax
-      run: |
-        for sql_file in $(find . -name "*.sql"); do
-          echo "🔍 Validating $sql_file..."
-          PGPASSWORD="postgresql" psql -h localhost -U postgres -d test_db -f "$sql_file" -v ON_ERROR_STOP=1
-        done
+      - name: Run SQL validation
+        run: |
+          for sql_file in $(find . -name "*.sql"); do
+            echo "🔍 Validating $sql_file..."
+            PGPASSWORD="postgresql" psql -h localhost -U postgres -d test_db -f "$sql_file" -v ON_ERROR_STOP=1
+          done
