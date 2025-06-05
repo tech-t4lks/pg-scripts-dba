@@ -37,5 +37,5 @@ jobs:
       run: |
         for sql_file in $(find . -name "*.sql"); do
           echo "🔍 Validating $sql_file..."
-          psql -h localhost -U postgres -d test_db -f "$sql_file" -v ON_ERROR_STOP=1
+          PGPASSWORD="postgresql" psql -h localhost -U postgres -d test_db -f "$sql_file" -v ON_ERROR_STOP=1
         done
